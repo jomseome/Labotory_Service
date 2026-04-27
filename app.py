@@ -1,5 +1,6 @@
 import calendar
 from datetime import datetime, date, timedelta
+from html import escape
 
 import gspread
 import streamlit as st
@@ -133,6 +134,31 @@ def format_date(year, month, day):
     return f'{year:04d}-{month:02d}-{day:02d}'
 
 
+def reservation_sort_key(item):
+    reservation_time = (item.get('시간') or '').strip()
+    start_time_text = reservation_time.split('-')[0].strip()
+
+    for time_format in ('%H:%M', '%H:%M:%S'):
+        try:
+            parsed_time = datetime.strptime(start_time_text, time_format).time()
+            return (0, parsed_time, reservation_time, item.get('예약자명', ''))
+        except ValueError:
+            continue
+
+    return (1, reservation_time, item.get('예약자명', ''))
+
+
+def sort_reservations(reservations):
+    return sorted(
+        reservations,
+        key=lambda item: (
+            item.get('날짜', ''),
+            reservation_sort_key(item),
+            item.get('생성일시', ''),
+        ),
+    )
+
+
 def render_calendar(reservations):
     year = st.session_state.current_year
     month = st.session_state.current_month
@@ -166,19 +192,37 @@ def render_calendar(reservations):
                 continue
 
             date_key = format_date(year, month, day)
-            day_reservations = [r for r in reservations if r.get('날짜') == date_key]
+            day_reservations = sorted(
+                [r for r in reservations if r.get('날짜') == date_key],
+                key=reservation_sort_key,
+            )
             label = f'{day}'
             if day_reservations:
                 label += f' ({len(day_reservations)})'
 
-            if cols[idx].button(label, key=f'day-{date_key}'):
-                st.session_state.selected_date = date_key
-                st.session_state.selected_reservation_index = None
+            with cols[idx]:
+                if st.button(label, key=f'day-{date_key}'):
+                    st.session_state.selected_date = date_key
+                    st.session_state.selected_reservation_index = None
 
-            if day_reservations:
-                for item in day_reservations[:2]:
-                    cols[idx].caption(
-                        f"{item.get('시간','')} {item.get('예약자명','')}"
+                if day_reservations:
+                    reservation_lines = ''.join(
+                        (
+                            "<div style='font-size:0.8rem; color:#6b7280; "
+                            "margin-bottom:0.35rem; white-space:normal; word-break:break-word;'>"
+                            f"{escape(item.get('시간', ''))} {escape(item.get('예약자명', ''))}"
+                            "</div>"
+                        )
+                        for item in day_reservations
+                    )
+                    st.markdown(
+                        (
+                            "<div style='height:110px; overflow-y:auto; padding-right:0.2rem; "
+                            "margin-top:0.35rem;'>"
+                            f"{reservation_lines}"
+                            "</div>"
+                        ),
+                        unsafe_allow_html=True,
                     )
 
 
@@ -211,7 +255,10 @@ def reservation_sidebar(worksheet, reservations):
             st.experimental_rerun()
 
     st.sidebar.write('---')
-    today_reservations = [r for r in reservations if r.get('날짜') == selected]
+    today_reservations = sorted(
+        [r for r in reservations if r.get('날짜') == selected],
+        key=reservation_sort_key,
+    )
     if today_reservations:
         st.sidebar.subheader('선택한 날짜 예약 목록')
         option_labels = [
@@ -274,7 +321,7 @@ def main():
             st.session_state.last_refresh = datetime.now()
             st.rerun()
     
-    reservations = fetch_reservations(worksheet)
+    reservations = sort_reservations(fetch_reservations(worksheet))
 
     render_calendar(reservations)
     reservation_sidebar(worksheet, reservations)
