@@ -1,0 +1,18 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env
+
+# Streamlit and IDE
+.streamlit/
+.vscode/
+
+# Google service account key
+service_account.json
+
+# OS files
+.DS_Store
