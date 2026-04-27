@@ -17,9 +17,16 @@ def get_google_sheet():
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive',
     ]
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        SERVICE_ACCOUNT_FILE, scope
-    )
+    try:
+        service_account_info = st.secrets["service_account"]
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+            service_account_info, scope
+        )
+    except (KeyError, FileNotFoundError):
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(
+            SERVICE_ACCOUNT_FILE, scope
+        )
+    
     client = gspread.authorize(credentials)
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
     worksheet = spreadsheet.worksheet(WORKSHEET_NAME)
