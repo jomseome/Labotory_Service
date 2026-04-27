@@ -54,11 +54,6 @@ def fetch_reservations(worksheet):
     return records
 
 
-@st.cache_data(ttl=60)
-def get_cached_reservations(worksheet):
-    return fetch_reservations(worksheet)
-
-
 def add_reservation(worksheet, reservation_date, reservation_time, reserver, purpose):
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     worksheet.append_row([
@@ -115,6 +110,7 @@ def init_session_state():
         st.session_state.selected_date = None
         st.session_state.selected_reservation_index = None
         st.session_state.status_message = ''
+        st.session_state.last_refresh = datetime.now()
 
 
 def change_month(offset):
@@ -272,7 +268,13 @@ def main():
     if deleted_count > 0:
         st.success(f'30일 이상 지난 예약 {deleted_count}건을 삭제했습니다.')
 
-    reservations = get_cached_reservations(worksheet)
+    col1, col2, col3 = st.columns([1, 1, 5])
+    with col1:
+        if st.button('🔄 새로고침'):
+            st.session_state.last_refresh = datetime.now()
+            st.rerun()
+    
+    reservations = fetch_reservations(worksheet)
 
     render_calendar(reservations)
     reservation_sidebar(worksheet, reservations)
