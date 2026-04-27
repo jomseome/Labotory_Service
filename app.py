@@ -18,10 +18,18 @@ def get_google_sheet():
         'https://www.googleapis.com/auth/drive',
     ]
     try:
-        service_account_info = st.secrets["service_account"]
-        credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-            service_account_info, scope
-        )
+        import json
+        service_account_json = st.secrets.get("SERVICE_ACCOUNT_JSON")
+        if service_account_json:
+            service_account_info = json.loads(service_account_json)
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+                service_account_info, scope
+            )
+        else:
+            service_account_info = st.secrets["service_account"]
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+                service_account_info, scope
+            )
     except (KeyError, FileNotFoundError):
         credentials = ServiceAccountCredentials.from_json_keyfile_name(
             SERVICE_ACCOUNT_FILE, scope
