@@ -54,6 +54,11 @@ def fetch_reservations(worksheet):
     return records
 
 
+@st.cache_data(ttl=60)
+def get_cached_reservations(worksheet):
+    return fetch_reservations(worksheet)
+
+
 def add_reservation(worksheet, reservation_date, reservation_time, reserver, purpose):
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     worksheet.append_row([
@@ -267,7 +272,7 @@ def main():
     if deleted_count > 0:
         st.success(f'30일 이상 지난 예약 {deleted_count}건을 삭제했습니다.')
 
-    reservations = fetch_reservations(worksheet)
+    reservations = get_cached_reservations(worksheet)
 
     render_calendar(reservations)
     reservation_sidebar(worksheet, reservations)
