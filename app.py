@@ -65,6 +65,17 @@ def add_reservation(worksheet, reservation_date, reservation_time, reserver, pur
     ])
 
 
+def delete_reservation(worksheet, reservation_date, reservation_time, reserver):
+    records = worksheet.get_all_records()
+    for idx, record in enumerate(records, start=2):
+        if (record.get('날짜') == reservation_date and 
+            record.get('시간') == reservation_time and 
+            record.get('예약자명') == reserver):
+            worksheet.delete_rows(idx)
+            return True
+    return False
+
+
 def delete_old_reservations(worksheet):
     records = worksheet.get_all_records()
     now = datetime.now()
@@ -224,6 +235,19 @@ def reservation_sidebar(worksheet, reservations):
         st.sidebar.write(f"- 예약자: {selected_item.get('예약자명')}")
         st.sidebar.write(f"- 목적: {selected_item.get('예약 목적')}")
         st.sidebar.write(f"- 생성일시: {selected_item.get('생성일시')}")
+        
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            if st.sidebar.button('삭제', key=f'delete-{selected_index}'):
+                delete_reservation(
+                    worksheet,
+                    selected_item.get('날짜'),
+                    selected_item.get('시간'),
+                    selected_item.get('예약자명')
+                )
+                st.session_state.status_message = '예약이 삭제되었습니다.'
+                st.session_state.selected_reservation_index = None
+                st.experimental_rerun()
     else:
         st.sidebar.info('해당 날짜에 등록된 예약이 없습니다.')
 
