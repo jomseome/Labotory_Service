@@ -252,7 +252,7 @@ def reservation_sidebar(worksheet, reservations):
             )
             st.session_state.status_message = f'{selected} 예약이 저장되었습니다.'
             st.session_state.selected_reservation_index = None
-            st.experimental_rerun()
+            st.rerun()
 
     st.sidebar.write('---')
     today_reservations = sorted(
@@ -295,7 +295,7 @@ def reservation_sidebar(worksheet, reservations):
                 )
                 st.session_state.status_message = '예약이 삭제되었습니다.'
                 st.session_state.selected_reservation_index = None
-                st.experimental_rerun()
+                st.rerun()
     else:
         st.sidebar.info('해당 날짜에 등록된 예약이 없습니다.')
 
