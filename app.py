@@ -51,9 +51,27 @@ def get_google_sheet():
     return worksheet
 
 
+def parse_reservation_date(reservation):
+    try:
+        return date.fromisoformat(str(reservation.get('날짜', '')).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def fetch_reservations(worksheet):
     records = worksheet.get_all_records()
-    return records
+    # Ignore empty rows and duplicated header rows that may exist in the sheet.
+    return [record for record in records if parse_reservation_date(record) is not None]
+
+
+def upcoming_reservations(reservations, today=None):
+    reference_date = today or date.today()
+    upcoming = []
+    for reservation in reservations:
+        reservation_date = parse_reservation_date(reservation)
+        if reservation_date is not None and reservation_date >= reference_date:
+            upcoming.append(reservation)
+    return upcoming
 
 
 def add_reservation(worksheet, reservation_date, reservation_time, reserver, purpose):
@@ -407,6 +425,7 @@ def inject_styles():
 def render_summary(reservations):
     today_key = date.today().isoformat()
     month_prefix = f'{st.session_state.current_year:04d}-{st.session_state.current_month:02d}'
+    upcoming_count = len(upcoming_reservations(reservations))
     today_count = sum(
         1 for item in reservations if str(item.get('날짜', '')) == today_key
     )
@@ -420,7 +439,7 @@ def render_summary(reservations):
     metrics = [
         ('오늘 예약', f'{today_count}건'),
         ('이번 달 예약', f'{month_count}건'),
-        ('전체 예약', f'{len(reservations)}건'),
+        ('예정 예약', f'{upcoming_count}건'),
     ]
     for column, (label, value) in zip(columns, metrics):
         column.markdown(
@@ -533,9 +552,11 @@ def resolve_editing_reservation(reservations):
 
 def render_reservation_table(reservations):
     st.markdown('<div class="section-title">전체 예약 목록</div>', unsafe_allow_html=True)
-    st.caption('예약 행을 클릭하면 왼쪽 사이드바에서 내용을 수정할 수 있습니다.')
+    st.caption(
+        '오늘 이후 예약만 표시됩니다. 예약 행을 선택하면 왼쪽에서 수정할 수 있습니다.'
+    )
     if not reservations:
-        st.info('등록된 예약이 없습니다. 달력에서 날짜를 선택해 첫 예약을 추가해보세요.')
+        st.info('오늘 이후 등록된 예약이 없습니다.')
         return
 
     table_rows = [
@@ -718,6 +739,7 @@ def main():
         st.session_state.status_message = f'30일 이상 지난 예약 {deleted_count}건을 정리했습니다.'
 
     reservations = sort_reservations(fetch_reservations(worksheet))
+    upcoming = upcoming_reservations(reservations)
     st.markdown(
         """
         <div class="app-hero">
@@ -741,7 +763,7 @@ def main():
 
     render_summary(reservations)
     render_calendar(reservations)
-    render_reservation_table(reservations)
+    render_reservation_table(upcoming)
     reservation_sidebar(worksheet, reservations)
 
 
